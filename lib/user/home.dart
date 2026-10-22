@@ -7,9 +7,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:location/location.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:social_intelligent/user/sent%20feedback.dart';
+import 'package:social_intelligent/user/view%20other%20users.dart';
 
 import '../login.dart';
 import 'change password.dart';
+import 'follow page.dart';
 import 'manage complaints.dart';
 import 'profile.dart';
 
@@ -328,7 +330,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       // Navigator.push(context, MaterialPageRoute(builder: (_) => SavedReelsPage()));
         break;
       case 'follow':
-      // Navigator.push(context, MaterialPageRoute(builder: (_) => FollowPage()));
+      Navigator.push(context, MaterialPageRoute(builder: (_) => FollowPage()));
         break;
       case 'feedback':
         Navigator.push(context, MaterialPageRoute(builder: (_) => const FeedbackPage()));
