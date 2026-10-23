@@ -6,13 +6,19 @@ import 'package:geocoding/geocoding.dart' as geo;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:location/location.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:social_intelligent/user/saved_reels_page.dart';
 import 'package:social_intelligent/user/sent%20feedback.dart';
+import 'package:social_intelligent/user/upload_reel_page.dart';
 import 'package:social_intelligent/user/view%20other%20users.dart';
+import 'package:social_intelligent/user/view%20own%20reels.dart'; // ViewOwnReels page
+import 'package:social_intelligent/user/view_received_shared_reels_page.dart';
 
 import '../login.dart';
 import 'change password.dart';
 import 'follow page.dart';
+import 'liked_commented_reels_page.dart';
 import 'manage complaints.dart';
+import 'other_users_reels_page.dart';
 import 'profile.dart';
 
 
@@ -89,6 +95,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         'View your own reels', _C.blue),
     _Feature('analysis', Icons.analytics_rounded, 'Reel Analysis',
         'Topic, sentiment, safety', _C.violet),
+    _Feature('other_reels', Icons.people_alt_rounded, 'Others Reels',
+        'Watch reels from other users', _C.mint),
   ];
 
   static const _insights = [
@@ -299,20 +307,43 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   // ============================================================
-  // NAVIGATION  (uncomment and connect your pages)
+  // NAVIGATION
   // ============================================================
 
   void _open(String key) {
     switch (key) {
+      case 'home':
+        return;
+
       case 'upload':
-      // Navigator.push(context, MaterialPageRoute(builder: (_) => UploadReelPage()));
-        break;
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => UploadReelPage()),
+        );
+        return;
+
       case 'my_reels':
-      // Navigator.push(context, MaterialPageRoute(builder: (_) => MyReelsPage()));
-        break;
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => ViewOwnReels()),
+        );
+        return;
+
       case 'analysis':
-      // Navigator.push(context, MaterialPageRoute(builder: (_) => ReelAnalysisPage()));
-        break;
+      // Reel Analysis-inu vere page undengil ivide maattuka
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => ViewOwnReels()),
+        );
+        return;
+
+      case 'other_reels':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => OtherUsersReelsPage()),
+        );
+        return;
+
       case 'post_time':
       // Navigator.push(context, MaterialPageRoute(builder: (_) => PostingTimePage()));
         break;
@@ -323,27 +354,51 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       // Navigator.push(context, MaterialPageRoute(builder: (_) => TrendingPage()));
         break;
       case 'like_comment':
+        Navigator.push(context, MaterialPageRoute(builder: (_) => LikedCommentedReelsPage()));
+        break;
+
       case 'share':
-      // Navigator.push(context, MaterialPageRoute(builder: (_) => ReelsFeedPage()));
+      Navigator.push(context, MaterialPageRoute(builder: (_) => SharedReelsHubPage()));
         break;
       case 'saved':
-      // Navigator.push(context, MaterialPageRoute(builder: (_) => SavedReelsPage()));
+      Navigator.push(context, MaterialPageRoute(builder: (_) => SavedReelsPage()));
         break;
+
       case 'follow':
-      Navigator.push(context, MaterialPageRoute(builder: (_) => FollowPage()));
-        break;
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => FollowPage()),
+        );
+        return;
+
       case 'feedback':
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const FeedbackPage()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const FeedbackPage()),
+        );
         return;
+
       case 'complaints':
-      Navigator.push(context, MaterialPageRoute(builder: (_) => ComplaintPage()));
-        break;
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => ComplaintPage()),
+        );
+        return;
+
       case 'profile':
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ProfilePage()),
+        );
         return;
+
       case 'password':
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const ChangePasswordPage()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ChangePasswordPage()),
+        );
         return;
+
       case 'logout':
         _confirmLogout();
         return;
@@ -1051,7 +1106,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 child: Stack(
                   children: [
                     ElevatedButton.icon(
-                      onPressed: () => _open('upload'),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => UploadReelPage()),
+                        );
+                      },
                       icon: const Icon(Icons.cloud_upload_rounded, size: 20),
                       label: Text(
                         'Upload Reel',

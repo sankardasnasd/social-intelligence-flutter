@@ -46,6 +46,8 @@ dependencies:
   google_maps_flutter:
   geocoding:
   google_fonts:
+  file_picker: ^8.1.2
+  video_player:
 
 dev_dependencies:
   flutter_test:
