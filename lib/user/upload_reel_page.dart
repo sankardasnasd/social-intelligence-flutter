@@ -9,7 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:location/location.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Colours (private to this file so they do not clash with your other files)
+// Colours
 class _C {
   static const bg = Color(0xFFF5F7FD);
   static const ink = Color(0xFF1F2A4D);
@@ -125,7 +125,6 @@ class _UploadReelPageState extends State<UploadReelPage> {
         if (placemarks.isNotEmpty) {
           geo.Placemark place = placemarks.first;
 
-          // 1. PLACE RESOLUTION (SubLocality -> Locality -> Street)
           String detectedPlace = '';
           if (place.subLocality != null && place.subLocality!.trim().isNotEmpty) {
             detectedPlace = place.subLocality!.trim();
@@ -137,7 +136,6 @@ class _UploadReelPageState extends State<UploadReelPage> {
             detectedPlace = place.name ?? '';
           }
 
-          // 2. DISTRICT RESOLUTION (subAdministrativeArea represents District in India)
           String detectedDistrict = '';
           if (place.subAdministrativeArea != null && place.subAdministrativeArea!.trim().isNotEmpty) {
             detectedDistrict = place.subAdministrativeArea!.trim();
@@ -145,7 +143,6 @@ class _UploadReelPageState extends State<UploadReelPage> {
             detectedDistrict = place.locality!.trim();
           }
 
-          // Remove "District" word if present (e.g., "Ernakulam District" -> "Ernakulam")
           detectedDistrict = detectedDistrict.replaceAll(RegExp(r'\s+District', caseSensitive: false), '').trim();
 
           setState(() {
@@ -162,6 +159,7 @@ class _UploadReelPageState extends State<UploadReelPage> {
       }
     }
   }
+
   // ---------------- File Picker ----------------
   Future<void> _pickFile() async {
     try {
@@ -180,8 +178,8 @@ class _UploadReelPageState extends State<UploadReelPage> {
     }
   }
 
-  // ---------------- Upload ----------------
-  Future<void> _uploadReel() async {
+  // ---------------- Pre-check & Automatic Upload Flow ----------------
+  Future<void> _handleUploadInitiation() async {
     if (_selectedFile == null) {
       _snack('Please select a media file first');
       return;
@@ -192,9 +190,237 @@ class _UploadReelPageState extends State<UploadReelPage> {
       _step = 0;
     });
 
+    final sh = await SharedPreferences.getInstance();
+    var baseUrl = (sh.get('url')?.toString() ?? '').trim();
+    while (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+    }
+
+    if (baseUrl.isEmpty) {
+      setState(() => _isLoading = false);
+      _snack('Server URL missing. Please login again.');
+      return;
+    }
+
+    try {
+      // 1. Call Pre-check API for Instant Viral Estimation
+      final preCheckUri = Uri.parse('$baseUrl/myapp/precheck_reel_virality/');
+      var preCheckReq = http.MultipartRequest('POST', preCheckUri);
+      preCheckReq.fields['caption'] = _captionController.text.trim();
+      preCheckReq.fields['region'] = _districtController.text.trim().isNotEmpty
+          ? _districtController.text.trim()
+          : 'Kerala';
+
+      preCheckReq.files.add(
+        await http.MultipartFile.fromPath('media_file', _selectedFile!.path),
+      );
+
+      var streamedPreCheck = await preCheckReq.send().timeout(const Duration(seconds: 40));
+      var preCheckResponse = await http.Response.fromStream(streamedPreCheck);
+      final preCheckData = json.decode(preCheckResponse.body);
+
+      setState(() => _isLoading = false);
+
+      if (preCheckData['status'] == 'ok') {
+        // 2. Open Viral Prediction Modal with 4-second Countdown
+        _showViralPreviewDialog(
+          viralPercentage: preCheckData['viral_percentage'] ?? 50,
+          topic: preCheckData['core_topic'] ?? 'General Content',
+          reach: preCheckData['estimated_reach'] ?? 1000,
+          bestTime: preCheckData['recommended_time'] ?? '07:00 PM',
+        );
+      } else {
+        // Fallback: Proceed directly to upload if pre-check fails
+        _executeActualUpload();
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      // Fallback: Proceed directly if pre-check network times out
+      _executeActualUpload();
+    }
+  }
+
+  void _showViralPreviewDialog({
+    required int viralPercentage,
+    required String topic,
+    required int reach,
+    required String bestTime,
+  }) {
+    int countdown = 4;
+    Timer? countdownTimer;
+    bool cancelled = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            countdownTimer ??= Timer.periodic(const Duration(seconds: 1), (tm) {
+              if (countdown > 1) {
+                setModalState(() => countdown--);
+              } else {
+                tm.cancel();
+                if (!cancelled) {
+                  Navigator.of(dialogCtx).pop();
+                  _executeActualUpload();
+                }
+              }
+            });
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              elevation: 16,
+              backgroundColor: Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 26),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'AI Virality Potential',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: _C.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      '$viralPercentage%',
+                      style: const TextStyle(
+                        fontSize: 54,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF10B981),
+                        letterSpacing: -1.5,
+                      ),
+                    ),
+                    const Text(
+                      'VIRAL PROBABILITY',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: _C.muted,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        children: [
+                          _modalInfoRow('Detected Topic', topic),
+                          const Divider(height: 14, color: _C.line),
+                          _modalInfoRow('Est. Audience Reach', '$reach users'),
+                          const Divider(height: 14, color: _C.line),
+                          _modalInfoRow('Best Posting Time', bestTime),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    RichText(
+                      text: TextSpan(
+                        style: const TextStyle(fontSize: 13.5, color: _C.muted),
+                        children: [
+                          const TextSpan(text: 'Posting automatically in '),
+                          TextSpan(
+                            text: '$countdown',
+                            style: const TextStyle(
+                              color: Color(0xFFEF4444),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                            ),
+                          ),
+                          const TextSpan(text: ' seconds...'),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            style: TextButton.styleFrom(
+                              backgroundColor: const Color(0xFFE2E8F0),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: () {
+                              cancelled = true;
+                              countdownTimer?.cancel();
+                              Navigator.of(dialogCtx).pop();
+                            },
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(color: Color(0xFF475569), fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF10B981),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              elevation: 0,
+                            ),
+                            onPressed: () {
+                              countdownTimer?.cancel();
+                              Navigator.of(dialogCtx).pop();
+                              _executeActualUpload();
+                            },
+                            child: const Text(
+                              'Post Now',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _modalInfoRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 13, color: _C.muted, fontWeight: FontWeight.w600)),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13, color: _C.ink, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ---------------- Final Upload Execution ----------------
+  Future<void> _executeActualUpload() async {
+    setState(() {
+      _isLoading = true;
+      _step = 0;
+    });
+
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(milliseconds: 2600), (_) {
-      if (mounted && _step < _steps.length - 1) setState(() => _step++);
+      if (mounted && _step < _steps.length - 1) {
+        setState(() => _step++);
+      }
     });
 
     try {
@@ -205,11 +431,6 @@ class _UploadReelPageState extends State<UploadReelPage> {
         baseUrl = baseUrl.substring(0, baseUrl.length - 1);
       }
 
-      if (baseUrl.isEmpty || lid.isEmpty) {
-        _snack('Session or Server URL missing. Please login again.');
-        return;
-      }
-
       final Uri url = Uri.parse('$baseUrl/myapp/user_upload_reel/');
 
       var request = http.MultipartRequest('POST', url);
@@ -217,6 +438,9 @@ class _UploadReelPageState extends State<UploadReelPage> {
       request.fields['caption'] = _captionController.text.trim();
       request.fields['place'] = _placeController.text.trim();
       request.fields['district'] = _districtController.text.trim();
+      request.fields['region'] = _districtController.text.trim().isNotEmpty
+          ? _districtController.text.trim()
+          : 'Kerala';
 
       if (_latitude != null) request.fields['latitude'] = _latitude.toString();
       if (_longitude != null) request.fields['longitude'] = _longitude.toString();
@@ -230,21 +454,19 @@ class _UploadReelPageState extends State<UploadReelPage> {
       final data = json.decode(response.body);
 
       if (data['status'] == 'ok') {
-        _snack('Reel uploaded and analyzed successfully!');
+        _snack('Reel posted successfully and is now Live!');
         if (mounted) Navigator.pop(context, true);
       } else {
         _snack(data['message']?.toString() ?? 'Upload failed');
       }
     } on FormatException {
-      _snack('The server sent an unexpected reply. Please try again.');
+      _snack('Server returned an unexpected response format.');
     } catch (e) {
-      _snack('Network / Server Error: $e');
+      _snack('Network Error: $e');
     } finally {
       _timer?.cancel();
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -396,7 +618,7 @@ class _UploadReelPageState extends State<UploadReelPage> {
                         SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Reels with vulgar, inappropriate or harmful content may be flagged and restricted by the admin.',
+                            'AI will analyze virality before uploading. All valid creative reels are approved and published live.',
                             style: TextStyle(color: Color(0xFF1F6B55), fontSize: 13, height: 1.45),
                           ),
                         ),
@@ -406,16 +628,19 @@ class _UploadReelPageState extends State<UploadReelPage> {
                 ),
                 const SizedBox(height: 24),
 
-                // Upload button
+                // Upload button triggering preview flow
                 _Reveal(
                   delay: 340,
-                  child: _UploadButton(enabled: hasFile && !_isLoading, onTap: _uploadReel),
+                  child: _UploadButton(
+                    enabled: hasFile && !_isLoading,
+                    onTap: _handleUploadInitiation,
+                  ),
                 ),
               ],
             ),
           ),
 
-          // Analysis overlay
+          // Analysis overlay during network operations
           if (_isLoading) _AnalysisOverlay(message: _steps[_step], step: _step, total: _steps.length),
         ],
       ),
@@ -704,7 +929,8 @@ class _MediaPreview extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   if (type == 'image')
-                    Image.file(file, fit: BoxFit.cover,
+                    Image.file(file,
+                        fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Container(color: const Color(0xFFEEF2FF)))
                   else
                     Container(

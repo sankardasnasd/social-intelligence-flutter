@@ -6,12 +6,17 @@ import 'package:geocoding/geocoding.dart' as geo;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:location/location.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:social_intelligent/user/saved_reels_page.dart';
 import 'package:social_intelligent/user/sent%20feedback.dart';
 import 'package:social_intelligent/user/upload_reel_page.dart';
 import 'package:social_intelligent/user/view%20other%20users.dart';
-import 'package:social_intelligent/user/view%20own%20reels.dart'; // ViewOwnReels page
+import 'package:social_intelligent/user/view%20own%20reels.dart';
 import 'package:social_intelligent/user/view_received_shared_reels_page.dart';
+import 'package:social_intelligent/user/view_reels_analysis.dart';
+import 'package:social_intelligent/user/posting_time_page.dart';
+import 'package:social_intelligent/user/reach_prediction_page.dart';
+import 'package:social_intelligent/user/trending_topics_page.dart';
 
 import '../login.dart';
 import 'change password.dart';
@@ -21,9 +26,8 @@ import 'manage complaints.dart';
 import 'other_users_reels_page.dart';
 import 'profile.dart';
 
-
 // ============================================================
-// COLORS  (soft pastel theme)
+// COLORS (soft pastel theme)
 // ============================================================
 
 class _C {
@@ -198,7 +202,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   // DATA
   // ============================================================
 
-  // show last saved coordinates immediately while GPS is loading
   Future<void> _loadSaved() async {
     final sh = await SharedPreferences.getInstance();
     if (!mounted) return;
@@ -318,56 +321,78 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       case 'upload':
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => UploadReelPage()),
+          MaterialPageRoute(builder: (_) => const UploadReelPage()),
         );
         return;
 
       case 'my_reels':
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => ViewOwnReels()),
+          MaterialPageRoute(builder: (_) => const ViewOwnReels()),
         );
         return;
 
       case 'analysis':
-      // Reel Analysis-inu vere page undengil ivide maattuka
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => ViewOwnReels()),
+          MaterialPageRoute(builder: (_) => const ViewReelAnalysisPage()),
         );
         return;
 
       case 'other_reels':
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => OtherUsersReelsPage()),
+          MaterialPageRoute(builder: (_) => const OtherUsersReelsPage()),
         );
         return;
 
+    // ---- CONNECTED MODULES (Posting Time, Reach, Trending) ----
       case 'post_time':
-      // Navigator.push(context, MaterialPageRoute(builder: (_) => PostingTimePage()));
-        break;
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const PostingTimePage()),
+        );
+        return;
+
       case 'reach':
-      // Navigator.push(context, MaterialPageRoute(builder: (_) => ReachPage()));
-        break;
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ReachPredictionPage()),
+        );
+        return;
+
       case 'trending':
-      // Navigator.push(context, MaterialPageRoute(builder: (_) => TrendingPage()));
-        break;
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const TrendingTopicsPage()),
+        );
+        return;
+
       case 'like_comment':
-        Navigator.push(context, MaterialPageRoute(builder: (_) => LikedCommentedReelsPage()));
-        break;
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const LikedCommentedReelsPage()),
+        );
+        return;
 
       case 'share':
-      Navigator.push(context, MaterialPageRoute(builder: (_) => SharedReelsHubPage()));
-        break;
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SharedReelsHubPage()),
+        );
+        return;
+
       case 'saved':
-      Navigator.push(context, MaterialPageRoute(builder: (_) => SavedReelsPage()));
-        break;
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SavedReelsPage()),
+        );
+        return;
 
       case 'follow':
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => FollowPage()),
+          MaterialPageRoute(builder: (_) => const FollowPage()),
         );
         return;
 
@@ -381,7 +406,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       case 'complaints':
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => ComplaintPage()),
+          MaterialPageRoute(builder: (_) => const ComplaintPage()),
         );
         return;
 
@@ -462,8 +487,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     if (!ok || !mounted) return;
 
-    Social_intelligent.instance.stop();
-
     final sh = await SharedPreferences.getInstance();
     await sh.remove('lid');
 
@@ -520,10 +543,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           context: context,
           builder: (context) => AlertDialog(
             backgroundColor: Colors.white,
-            shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            title:
-            Text('Exit App', style: _outfit(20, FontWeight.w600, _C.ink)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24)),
+            title: Text('Exit App',
+                style: _outfit(20, FontWeight.w600, _C.ink)),
             content: Text(
               'Are you sure you want to exit Social Intelligent?',
               style: GoogleFonts.manrope(color: _C.muted),
@@ -614,12 +637,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
               ),
             ),
-            _confetti(size.width * 0.82, size.height * 0.30, 12, _C.peach,
-                0.0, 1.0),
-            _confetti(size.width * 0.08, size.height * 0.42, 10, _C.sun,
-                0.4, 1.0),
-            _confetti(size.width * 0.90, size.height * 0.68, 16, _C.lilac,
-                0.7, 0.7),
+            _confetti(size.width * 0.82, size.height * 0.30, 12, _C.peach, 0.0, 1.0),
+            _confetti(size.width * 0.08, size.height * 0.42, 10, _C.sun, 0.4, 1.0),
+            _confetti(size.width * 0.90, size.height * 0.68, 16, _C.lilac, 0.7, 0.7),
 
             // ---------------- CONTENT ----------------
             SafeArea(
@@ -633,8 +653,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         constraints: const BoxConstraints(maxWidth: 560),
                         child: ListView(
                           physics: const BouncingScrollPhysics(),
-                          padding:
-                          const EdgeInsets.fromLTRB(20, 14, 20, 120),
+                          padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
                           children: [
                             _reveal(0.08, _greeting()),
                             const SizedBox(height: 16),
@@ -701,7 +720,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   // ============================================================
-  // TOP BAR  (current location details)
+  // TOP BAR (current location details)
   // ============================================================
 
   Widget _topBar() {
@@ -744,7 +763,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               children: [
                 Row(
                   children: [
-                    // pin with pulse ring
                     SizedBox(
                       width: 54,
                       height: 54,
@@ -761,8 +779,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: _C.mint
-                                        .withOpacity((1 - t) * 0.8),
+                                    color: _C.mint.withOpacity((1 - t) * 0.8),
                                     width: 2,
                                   ),
                                 ),
@@ -823,7 +840,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         ],
                       ),
                     ),
-                    // refresh
                     Material(
                       color: _C.blue.withOpacity(0.10),
                       shape: RoundedRectangleBorder(
@@ -960,8 +976,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 children: [
                   Text(
                     'Share reels that are ',
-                    style: _outfit(14, FontWeight.w500, _C.muted,
-                        spacing: 0),
+                    style: _outfit(14, FontWeight.w500, _C.muted, spacing: 0),
                   ),
                   _swapWord(),
                 ],
@@ -1034,7 +1049,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ),
       child: Stack(
         children: [
-          // decorative circles
           Positioned(
             right: -30,
             top: -30,
@@ -1063,8 +1077,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.22),
                   borderRadius: BorderRadius.circular(12),
@@ -1110,7 +1123,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => UploadReelPage()),
+                              builder: (context) => const UploadReelPage()),
                         );
                       },
                       icon: const Icon(Icons.cloud_upload_rounded, size: 20),
@@ -1142,8 +1155,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   .clamp(0.0, 1.0);
                               final left = -0.6 + 1.9 * p;
                               return Align(
-                                alignment:
-                                Alignment((left / 0.64) * 2 - 1, 0),
+                                alignment: Alignment((left / 0.64) * 2 - 1, 0),
                                 child: FractionallySizedBox(
                                   widthFactor: 0.30,
                                   heightFactor: 1,
@@ -1213,7 +1225,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  // two column grid of tiles
   Widget _grid(List<_Feature> items) {
     return LayoutBuilder(
       builder: (context, c) {
@@ -1222,7 +1233,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         return Wrap(
           spacing: gap,
           runSpacing: gap,
-          children: items.map((f) => SizedBox(width: w, child: _tile(f))).toList(),
+          children:
+          items.map((f) => SizedBox(width: w, child: _tile(f))).toList(),
         );
       },
     );
@@ -1293,7 +1305,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  // three compact insight cards
   Widget _insightRow() {
     return Row(
       children: [
@@ -1361,7 +1372,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  // list style account card
   Widget _accountCard() {
     return Container(
       decoration: _cardDeco(),
